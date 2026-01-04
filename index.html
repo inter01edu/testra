@@ -4,12 +4,10 @@
     <meta content="text/html; charset=UTF-8" http-equiv="content-type">
 
     <style>
-      /* Police globale */
       html, body, table, td, a, div {
         font-family: Gotham, "Gotham", Times New Roman, sans-serif;
       }
 
-      /* Logo principal */
       .logo01edu img:first-child {
         width: 90px;
         max-width: 90px;
@@ -18,17 +16,11 @@
         margin: 0 auto;
       }
 
-      .logo01edu {
-        text-align: center;
-      }
+      .logo01edu { text-align: center; }
 
-      /* Logos sociaux */
       .social img {
         width: 22px;
         height: 22px;
-        min-width: 22px;
-        min-height: 22px;
-        object-fit: contain;
         display: block;
       }
 
@@ -38,21 +30,8 @@
         border-collapse: collapse;
       }
 
-      .social td {
-        padding: 0 2px;
-        width: 22px;
-      }
-
-      .social a,
-      .social img {
-        display: block;
-      }
-
-      /* Espacement texte */
-      .sig-text tr { height: auto !important; }
       .sig-text td { padding: 1px 0; line-height: 1.3; }
 
-      /* Toolbar Copy */
       .toolbar {
         display: flex;
         gap: 6px;
@@ -80,48 +59,28 @@
           .replace(/[^a-z0-9-]/g, "");
       }
 
-      // Copie HTML (Gmail)
       function copyForGmail(id) {
         const el = document.getElementById(id);
-        if (!el) return alert("Signature introuvable.");
-
+        if (!el) return;
         const html = el.outerHTML;
 
-        if (navigator.clipboard && window.ClipboardItem) {
-          navigator.clipboard.write([
-            new ClipboardItem({
-              "text/html": new Blob([html], { type: "text/html" }),
-              "text/plain": new Blob([el.innerText || ""], { type: "text/plain" })
-            })
-          ]).then(() => alert("Signature copiée pour Gmail ✅"))
-            .catch(() => fallbackCopySelection(el, "Signature copiée ✅ (fallback)"));
-        } else {
-          fallbackCopySelection(el, "Signature copiée ✅ (fallback)");
-        }
+        navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([el.innerText || ""], { type: "text/plain" })
+          })
+        ]);
       }
 
-      // Copie par sélection (Outlook)
       function copyForOutlook(id) {
         const el = document.getElementById(id);
-        if (!el) return alert("Signature introuvable.");
-        fallbackCopySelection(el, "Signature copiée pour Outlook ✅");
-      }
-
-      // Fallback commun : sélection + execCommand
-      function fallbackCopySelection(el, successMsg) {
+        if (!el) return;
         const range = document.createRange();
         range.selectNode(el);
-
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-
-        try {
-          document.execCommand("copy");
-          alert(successMsg || "Copié ✅");
-        } catch (e) {
-          alert("Impossible de copier automatiquement. Sélectionne puis Ctrl/Cmd+C.");
-        }
+        document.execCommand("copy");
         sel.removeAllRanges();
       }
 
@@ -129,110 +88,79 @@
         .then(r => r.json())
         .then(users =>
           users.filter(Boolean).map(({ firstname, lastname, title, mobile }) => {
-            const slug = slugify(`${firstname} ${lastname}`) || `user-${Math.random().toString(16).slice(2)}`;
+            const slug = slugify(`${firstname} ${lastname}`);
 
-            return [
-              `<div id="${slug}-anchor" style="display:flex;flex-direction:row;margin:10px 0;user-select:none">`,
-                '<div style="background:#eee;flex-grow:1"></div>',
-                `<a style="text-decoration:none;color:grey" href="#${slug}-anchor">🔗</a>`,
-              '</div>',
+            return `
+<div class="toolbar">
+  <button onclick="copyForGmail('${slug}')">📋 Copy for Gmail</button>
+  <button onclick="copyForOutlook('${slug}')">📋 Copy for Outlook</button>
+</div>
 
-              `<div class="toolbar">`,
-                `<button onclick="copyForGmail('${slug}')">📋 Copy for Gmail</button>`,
-                `<button onclick="copyForOutlook('${slug}')">📋 Copy for Outlook</button>`,
-              `</div>`,
+<div id="${slug}">
+<table cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">
+<tr>
+<td width="90">
+  <table>
+    <tr>
+      <td class="logo01edu">
+        <img src="https://raw.githubusercontent.com/inter01edu/testra/main/images/logo01edu.png"
+             width="90" height="90"
+             style="display:block;border:0;width:90px;height:auto;">
+      </td>
+    </tr>
+    <tr><td height="6"></td></tr>
+    <tr>
+      <td class="social">
+        <table>
+          <tr>
+            <td style="padding-right:4px;">
+              <a href="https://www.linkedin.com/company/01edu/">
+                <img src="https://raw.githubusercontent.com/inter01edu/testra/main/images/linkedin.png"
+                     width="22" height="22"
+                     style="display:block;border:0;width:22px;height:22px;">
+              </a>
+            </td>
+            <td style="padding-right:4px;">
+              <a href="https://www.youtube.com/@01Edu_ai">
+                <img src="https://raw.githubusercontent.com/inter01edu/testra/main/images/youtube.png"
+                     width="22" height="22"
+                     style="display:block;border:0;width:22px;height:22px;">
+              </a>
+            </td>
+            <td>
+              <a href="https://www.instagram.com/01edu_ai/">
+                <img src="https://raw.githubusercontent.com/inter01edu/testra/main/images/instagram.png"
+                     width="22" height="22"
+                     style="display:block;border:0;width:22px;height:22px;">
+              </a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</td>
 
-              /* CONTENEUR SIGNATURE (copié) */
-              `<div id="${slug}">`,
+<td width="2"></td>
+<td width="3" style="background:#0063f9;"></td>
+<td width="3"></td>
 
-              /* TABLE PRINCIPALE : table-layout fixed */
-              '<table cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-family:sans-serif;table-layout:fixed;">',
-                '<tr>',
-
-                  /* COLONNE LOGO (largeur réellement forcée) */
-                  '<td width="90" style="width:90px !important;">',
-                    '<table cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;text-align:center;">',
-
-                      '<tr>',
-                        '<td class="logo01edu">',
-                          /* ✅ FIX tailles images: width/height + style inline (email-safe) + ✅ URL ABSOLUE (Gmail/Outlook) */
-                          '<img src="https://raw.githubusercontent.com/inter01edu/testra/main/images/logo01edu.png" alt="01Edu Logo" width="90" height="90" style="display:block;border:0;outline:none;text-decoration:none;width:90px;height:auto;max-width:90px;margin:0 auto;" />',
-                        '</td>',
-                      '</tr>',
-
-                      '<tr>',
-                        '<td height="6" style="height:6px;line-height:6px;font-size:0;">&nbsp;</td>',
-                      '</tr>',
-
-                      '<tr>',
-                        '<td class="social">',
-                          '<table cellpadding="0" cellspacing="0" border="0" style="width:auto;border-collapse:collapse;margin:0 auto;">',
-                            '<tr>',
-                              '<td>',
-                                '<a href="https://www.linkedin.com/company/01edu/">',
-                                  /* ✅ FIX + ✅ URL ABSOLUE */
-                                  '<img src="https://raw.githubusercontent.com/inter01edu/testra/main/images/linkedin.png" alt="LinkedIn" width="22" height="22" style="display:block;border:0;outline:none;text-decoration:none;width:22px;height:22px;" />',
-                                '</a>',
-                              '</td>',
-                              '<td>',
-                                '<a href="https://www.youtube.com/@01Edu_ai">',
-                                  /* ✅ FIX + ✅ URL ABSOLUE */
-                                  '<img src="https://raw.githubusercontent.com/inter01edu/testra/main/images/youtube.png" alt="YouTube" width="22" height="22" style="display:block;border:0;outline:none;text-decoration:none;width:22px;height:22px;" />',
-                                '</a>',
-                              '</td>',
-                              '<td>',
-                                '<a href="https://www.instagram.com/01edu_ai/">',
-                                  /* ✅ FIX + ✅ URL ABSOLUE */
-                                  '<img src="https://raw.githubusercontent.com/inter01edu/testra/main/images/instagram.png" alt="Instagram" width="22" height="22" style="display:block;border:0;outline:none;text-decoration:none;width:22px;height:22px;" />',
-                                '</a>',
-                              '</td>',
-                            '</tr>',
-                          '</table>',
-                        '</td>',
-                      '</tr>',
-
-                    '</table>',
-                  '</td>',
-
-                  /* ESPACE À DROITE DU LOGO */
-                  '<td width="2" style="width:2px !important;"></td>',
-
-                  /* BARRE BLEUE */
-                  '<td width="3" style="width:3px !important;background:#0063f9;"></td>',
-
-                  /* ESPACE */
-                  '<td width="3" style="width:3px !important;"></td>',
-
-                  /* TEXTE (prend le reste) */
-                  '<td style="width:auto;">',
-                    '<table class="sig-text" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">',
-                      '<tr><td style="font-size:12px;">Recode Our World With</td></tr>',
-                      `<tr><td style="font-weight:bold;color:#0063f9;">${firstname} ${lastname}</td></tr>`,
-                      `<tr><td style="font-weight:bold;font-size:12px;">${title}</td></tr>`,
-                      mobile ? `<tr><td style="font-size:12px;">Mobile: ${mobile}</td></tr>` : '',
-                      '<tr><td style="font-size:12px;"><a style="color:#0063f9;" href="https://www.01edu.ai">www.01edu.ai</a></td></tr>',
-                    '</table>',
-                  '</td>',
-
-                '</tr>',
-
-                '<tr>',
-                  '<td colspan="5" style="padding-top:20px;color:#666;font-size:12px">',
-                    'Any electronic messages sent outside your regular working hours do not require a response until you return to your normal working hours.',
-                  '</td>',
-                '</tr>',
-
-              '</table>',
-
-              `</div>` /* fin conteneur signature */
-            ].join('');
+<td>
+  <table class="sig-text">
+    <tr><td style="font-size:12px;">Recode Our World With</td></tr>
+    <tr><td style="font-weight:bold;color:#0063f9;">${firstname} ${lastname}</td></tr>
+    <tr><td style="font-weight:bold;font-size:12px;">${title}</td></tr>
+    ${mobile ? `<tr><td style="font-size:12px;">Mobile: ${mobile}</td></tr>` : ""}
+    <tr><td style="font-size:12px;"><a href="https://www.01edu.ai">www.01edu.ai</a></td></tr>
+  </table>
+</td>
+</tr>
+</table>
+</div>
+`;
           })
         )
-        .then(html => document.body.innerHTML += html.join('<br>\n'))
-        .catch(err => {
-          document.body.innerHTML += `<pre style="color:#b00020;font-family:monospace">ERREUR: ${err.message}</pre>`;
-          console.error(err);
-        });
+        .then(html => document.body.innerHTML += html.join("<br>"));
     </script>
   </body>
 </html>
