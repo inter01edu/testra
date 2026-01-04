@@ -1,42 +1,23 @@
-<!doctype html> 
+<!doctype html>
 <html>
 <head>
   <meta content="text/html; charset=UTF-8" http-equiv="content-type">
   <style>
+    /* Police globale */
     html, body, table, td, a, div {
       font-family: Gotham, "Gotham", Times New Roman, sans-serif;
     }
 
-    .logo01edu img:first-child {
-      width: 90px;
-      max-width: 90px;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-    }
+    /* Texte */
+    .sig-text td { padding: 1px 0; line-height: 1.3; }
 
-    .logo01edu { text-align: center; }
-
-    .social img {
-      width: 22px;
-      height: 22px;
-      display: block;
-    }
-
-    .social table {
-      margin: 0 auto;
-      border-collapse: collapse;
-    }
-
-    .sig-text td {
-      padding: 1px 0;
-      line-height: 1.3;
-    }
-
+    /* Toolbar */
     .toolbar {
       display: flex;
       gap: 6px;
       margin: 6px 0 14px;
+      align-items: center;
+      flex-wrap: wrap;
     }
 
     .toolbar button {
@@ -47,112 +28,201 @@
       border: 1px solid #ccc;
       background: #f7f7f7;
     }
+
+    /* (Optionnel) Séparateur */
+    hr { border: 0; border-top: 1px solid #e5e5e5; margin: 16px 0; }
   </style>
 </head>
 
 <body>
 
 <script>
-function slugify(str) {
-  return (str || "")
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
-}
+  function slugify(str) {
+    return (str || "")
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+  }
 
-/* COPY POUR GMAIL (HTML direct) */
-function copyForGmail(id) {
-  const el = document.getElementById(id);
-  const html = el.outerHTML;
+  // Copy "HTML" (Gmail web)
+  function copyForGmail(id) {
+    const el = document.getElementById(id);
+    if (!el) return alert("Signature introuvable.");
 
-  navigator.clipboard.write([
-    new ClipboardItem({
-      "text/html": new Blob([html], { type: "text/html" })
-    })
-  ]);
-  alert("Signature copiée pour Gmail ✅");
-}
+    const html = el.outerHTML;
 
-/* COPY POUR OUTLOOK (sélection réelle) */
-function copyForOutlook(id) {
-  const el = document.getElementById(id);
-  const range = document.createRange();
-  range.selectNode(el);
+    // ClipboardItem requires https or localhost in most browsers
+    if (navigator.clipboard && window.ClipboardItem) {
+      navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([el.innerText || ""], { type: "text/plain" })
+        })
+      ]).then(
+        () => alert("Signature copiée pour Gmail ✅"),
+        () => fallbackCopySelection(el, "Signature copiée ✅ (fallback)")
+      );
+      return;
+    }
 
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
+    fallbackCopySelection(el, "Signature copiée ✅ (fallback)");
+  }
 
-  document.execCommand("copy");
-  sel.removeAllRanges();
+  // Copy by selecting DOM (Outlook / Word engine friendly)
+  function copyForOutlook(id) {
+    const el = document.getElementById(id);
+    if (!el) return alert("Signature introuvable.");
+    fallbackCopySelection(el, "Signature copiée pour Outlook ✅");
+  }
 
-  alert("Signature copiée pour Outlook ✅");
-}
+  function fallbackCopySelection(el, okMsg) {
+    const range = document.createRange();
+    range.selectNode(el);
 
-fetch("https://opensheet.elk.sh/1maVoCpxQUmelT_wpZzTZERPzW4y20zGeoLtQuxbFvXQ/1")
-  .then(r => r.json())
-  .then(users =>
-    users.filter(Boolean).map(({ firstname, lastname, title, mobile }) => {
-      const slug = slugify(`${firstname} ${lastname}`);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
 
-      return `
-<div class="toolbar">
-  <button onclick="copyForGmail('${slug}')">📋 Copy for Gmail</button>
-  <button onclick="copyForOutlook('${slug}')">📋 Copy for Outlook</button>
+    try {
+      document.execCommand("copy");
+      alert(okMsg);
+    } catch (e) {
+      alert("Impossible de copier automatiquement. Sélectionne la signature et fais Ctrl+C.");
+    } finally {
+      sel.removeAllRanges();
+    }
+  }
+
+  fetch("https://opensheet.elk.sh/1maVoCpxQUmelT_wpZzTZERPzW4y20zGeoLtQuxbFvXQ/1")
+    .then(r => r.json())
+    .then(users =>
+      users.filter(Boolean).map(({ firstname, lastname, title, mobile }) => {
+        const slugBase = slugify(`${firstname} ${lastname}`) || "user";
+        const slug = `${slugBase}-${Math.random().toString(16).slice(2, 8)}`;
+
+        // IMPORTANT EMAIL-SAFE IMAGES:
+        // - width/height attributes on <img>
+        // - inline style display:block; border:0; outline:none; text-decoration:none;
+        // - keep table layout + fixed widths for Outlook
+        const logoImg = `
+          <img
+            src="./images/logo01edu.svg"
+            width="90"
+            height="90"
+            alt="01Edu Logo"
+            style="display:block;border:0;outline:none;text-decoration:none;width:90px;height:90px;"
+          />
+        `;
+
+        const icon = (src, alt) => `
+          <img
+            src="${src}"
+            width="22"
+            height="22"
+            alt="${alt}"
+            style="display:block;border:0;outline:none;text-decoration:none;width:22px;height:22px;"
+          />
+        `;
+
+        return `
+<div style="display:flex;flex-direction:row;margin:10px 0;user-select:none">
+  <div style="background:#eee;flex-grow:1"></div>
+  <a style="text-decoration:none;color:grey" href="#${slug}">🔗</a>
 </div>
 
+<div class="toolbar">
+  <button type="button" onclick="copyForGmail('${slug}')">📋 Copy for Gmail</button>
+  <button type="button" onclick="copyForOutlook('${slug}')">📋 Copy for Outlook</button>
+</div>
+
+<!-- SIGNATURE WRAPPER -->
 <div id="${slug}">
-<table cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">
-<tr>
-<td width="90">
-  <table>
+  <!-- TABLE PRINCIPALE (email-safe) -->
+  <table cellpadding="0" cellspacing="0" border="0"
+         style="width:100%;border-collapse:collapse;table-layout:fixed;font-family:Gotham,'Gotham',Times New Roman,sans-serif;">
     <tr>
-      <td class="logo01edu">
-        <img src="./images/logo01edu.svg" />
-      </td>
-    </tr>
-    <tr><td height="6"></td></tr>
-    <tr>
-      <td class="social">
-        <table>
+      <!-- COLONNE LOGO -->
+      <td width="90" style="width:90px !important;vertical-align:top;">
+        <table cellpadding="0" cellspacing="0" border="0"
+               style="width:90px;border-collapse:collapse;text-align:center;">
           <tr>
-            <td><a href="https://www.linkedin.com/company/01edu/"><img src="./images/linkedin.svg"></a></td>
-            <td><a href="https://www.youtube.com/@01Edu_ai"><img src="./images/youtube.svg"></a></td>
-            <td><a href="https://www.instagram.com/01edu_ai/"><img src="./images/instagram.svg"></a></td>
+            <td style="text-align:center;">
+              ${logoImg}
+            </td>
+          </tr>
+
+          <tr>
+            <td height="6" style="height:6px;line-height:6px;font-size:0;">&nbsp;</td>
+          </tr>
+
+          <tr>
+            <td style="text-align:center;">
+              <table cellpadding="0" cellspacing="0" border="0"
+                     style="border-collapse:collapse;margin:0 auto;">
+                <tr>
+                  <td width="22" style="width:22px;padding:0 2px;">
+                    <a href="https://www.linkedin.com/company/01edu/"
+                       style="display:block;text-decoration:none;border:0;">
+                      ${icon("./images/linkedin.svg", "LinkedIn")}
+                    </a>
+                  </td>
+                  <td width="22" style="width:22px;padding:0 2px;">
+                    <a href="https://www.youtube.com/@01Edu_ai"
+                       style="display:block;text-decoration:none;border:0;">
+                      ${icon("./images/youtube.svg", "YouTube")}
+                    </a>
+                  </td>
+                  <td width="22" style="width:22px;padding:0 2px;">
+                    <a href="https://www.instagram.com/01edu_ai/"
+                       style="display:block;text-decoration:none;border:0;">
+                      ${icon("./images/instagram.svg", "Instagram")}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+
+      <!-- ESPACES + BARRE -->
+      <td width="2" style="width:2px !important;font-size:0;line-height:0;">&nbsp;</td>
+      <td width="3" style="width:3px !important;background:#0063f9;font-size:0;line-height:0;">&nbsp;</td>
+      <td width="3" style="width:3px !important;font-size:0;line-height:0;">&nbsp;</td>
+
+      <!-- TEXTE -->
+      <td style="vertical-align:top;">
+        <table class="sig-text" cellpadding="0" cellspacing="0" border="0"
+               style="width:100%;border-collapse:collapse;">
+          <tr><td style="font-size:12px;">Recode Our World With</td></tr>
+          <tr><td style="font-weight:bold;color:#0063f9;">${firstname} ${lastname}</td></tr>
+          <tr><td style="font-weight:bold;font-size:12px;">${title || ""}</td></tr>
+          ${mobile ? `<tr><td style="font-size:12px;">Mobile: ${mobile}</td></tr>` : ""}
+          <tr>
+            <td style="font-size:12px;">
+              <a style="color:#0063f9;text-decoration:none;" href="https://www.01edu.ai">www.01edu.ai</a>
+            </td>
           </tr>
         </table>
       </td>
     </tr>
+
+    <tr>
+      <td colspan="5" style="padding-top:16px;color:#666;font-size:12px;">
+        Any electronic messages sent outside your regular working hours do not require a response until you return to your normal working hours.
+      </td>
+    </tr>
   </table>
-</td>
-
-<td width="2"></td>
-<td width="3" style="background:#0063f9;"></td>
-<td width="3"></td>
-
-<td>
-  <table class="sig-text">
-    <tr><td style="font-size:12px;">Recode Our World With</td></tr>
-    <tr><td style="font-weight:bold;color:#0063f9;">${firstname} ${lastname}</td></tr>
-    <tr><td style="font-weight:bold;font-size:12px;">${title}</td></tr>
-    ${mobile ? `<tr><td style="font-size:12px;">Mobile: ${mobile}</td></tr>` : ""}
-    <tr><td style="font-size:12px;"><a href="https://www.01edu.ai">www.01edu.ai</a></td></tr>
-  </table>
-</td>
-</tr>
-
-<tr>
-<td colspan="5" style="padding-top:16px;font-size:12px;color:#666;">
-Any electronic messages sent outside your regular working hours do not require a response until you return to your normal working hours.
-</td>
-</tr>
-</table>
 </div>
 `;
-    })
-  )
-  .then(html => document.body.innerHTML += html.join("<hr>"));
+      })
+    )
+    .then(html => { document.body.innerHTML += html.join("<hr>"); })
+    .catch(err => {
+      document.body.innerHTML += `<pre style="color:#b00020;font-family:monospace">ERREUR: ${err.message}</pre>`;
+      console.error(err);
+    });
 </script>
 
 </body>
