@@ -4,71 +4,33 @@
     <meta content="text/html; charset=UTF-8" http-equiv="content-type">
 
     <style>
-      /* Police globale */
       html, body, table, td, a, div {
         font-family: Gotham, "Gotham", Arial, sans-serif;
       }
 
-      /* Logo principal */
-      .logo01edu img:first-child {
-        width: 100px;
-        max-width: 100px;
-        height: auto;
-        display: block;     /* safe */
-        margin: 0 auto;     /* centre l'image */
-      }
-
-      .logo01edu {
-        padding-right: 6px;
-        text-align: center;
-      }
-
-      /* Logos sociaux */
-      .social img {
-        width: 22px;
-        height: 22px;
-        min-width: 22px;
-        min-height: 22px;
-        object-fit: contain;
-        display: block;
-      }
-
-      .social table {
-        width: auto !important;
-        margin: 0 auto !important;
-        border-collapse: collapse;
-      }
-
-      .social td {
-        padding: 0 2px;
-        width: 22px;
-      }
-
-      .social a,
-      .social img {
-        display: block;
-      }
-
-      /* Espacement texte */
-      .sig-text tr { height: auto !important; }
-      .sig-text td { padding: 1px 0; line-height: 1.3; }
-
-      /* Bouton Copy Signature */
       .copy-btn {
         padding: 6px 10px;
         border: 1px solid #ddd;
         border-radius: 8px;
         background: #fff;
-        color: #333;
         cursor: pointer;
         font-size: 12px;
       }
-      .copy-btn:disabled { opacity: .6; cursor: default; }
+      .copy-btn:disabled {
+        opacity: .6;
+        cursor: default;
+      }
     </style>
   </head>
 
   <body>
     <script>
+      /* =========================
+         CONFIG IMAGES (GitHub RAW)
+         ========================= */
+      const IMG_BASE =
+        "https://raw.githubusercontent.com/inter01edu/01edusigngenerator/main/images/";
+
       function slugify(str) {
         return (str || "")
           .toLowerCase()
@@ -77,251 +39,148 @@
           .replace(/[^a-z0-9-]/g, "");
       }
 
-      // ---------- COPY HELPERS (simple + reliable) ----------
+      function toPublicImg(src) {
+        if (!src) return src;
+        if (src.startsWith("http")) return src;
+        return IMG_BASE + src.replace(/^\.?\/*images\//, "");
+      }
 
-      async function blobToDataURL(blob) {
-        return await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onerror = reject;
-          reader.onload = () => resolve(reader.result);
-          reader.readAsDataURL(blob);
+      function rewriteImages(root) {
+        root.querySelectorAll("img").forEach(img => {
+          img.setAttribute("src", toPublicImg(img.getAttribute("src")));
         });
       }
 
-      async function inlineImages(rootEl) {
-        const imgs = Array.from(rootEl.querySelectorAll("img"));
-        for (const img of imgs) {
-          const src = img.getAttribute("src");
-          if (!src || src.startsWith("data:")) continue;
-
-          // Convertit en URL absolue (http/https/local server)
-          let abs;
-          try {
-            abs = new URL(src, window.location.href).href;
-          } catch (e) {
-            continue;
-          }
-
-          try {
-            const res = await fetch(abs, { cache: "force-cache" });
-            const blob = await res.blob();
-            const dataUrl = await blobToDataURL(blob);
-            img.setAttribute("src", dataUrl);
-          } catch (e) {
-            // Si fetch échoue, on laisse l'URL absolue au moins
-            img.setAttribute("src", abs);
-          }
-        }
-      }
-
-      function inlineCriticalStyles(rootEl) {
-        // Objectif : garder le même rendu au collage (Gmail/Outlook ignorent souvent les CSS de classe)
-        // 1) Police globale
-        rootEl.querySelectorAll("table, td, a, div, span").forEach(el => {
-          const prev = el.getAttribute("style") || "";
-          el.setAttribute("style", prev + (prev.trim().endsWith(";") || prev.trim()==="" ? "" : ";") + "font-family:Gotham,'Gotham',Arial,sans-serif;");
+      function inlineStyles(root) {
+        root.querySelectorAll("table, td, a, div, span").forEach(el => {
+          el.style.fontFamily = "Gotham, Arial, sans-serif";
         });
 
-        // 2) Logo
-        const logoImg = rootEl.querySelector(".logo01edu img");
-        if (logoImg) {
-          const prev = logoImg.getAttribute("style") || "";
-          logoImg.setAttribute("style", prev + (prev.trim().endsWith(";") || prev.trim()==="" ? "" : ";") + "width:100px;max-width:100px;height:auto;display:block;margin:0 auto;");
-        }
-        const logoTd = rootEl.querySelector(".logo01edu");
-        if (logoTd) {
-          const prev = logoTd.getAttribute("style") || "";
-          logoTd.setAttribute("style", prev + (prev.trim().endsWith(";") || prev.trim()==="" ? "" : ";") + "padding-right:6px;text-align:center;");
+        const logo = root.querySelector(".logo01edu img");
+        if (logo) {
+          logo.style.width = "100px";
+          logo.style.maxWidth = "100px";
+          logo.style.display = "block";
+          logo.style.margin = "0 auto";
         }
 
-        // 3) Social icons
-        rootEl.querySelectorAll(".social img").forEach(img => {
-          const prev = img.getAttribute("style") || "";
-          img.setAttribute("style", prev + (prev.trim().endsWith(";") || prev.trim()==="" ? "" : ";") + "width:22px;height:22px;min-width:22px;min-height:22px;object-fit:contain;display:block;");
-        });
-        rootEl.querySelectorAll(".social td").forEach(td => {
-          const prev = td.getAttribute("style") || "";
-          td.setAttribute("style", prev + (prev.trim().endsWith(";") || prev.trim()==="" ? "" : ";") + "padding:0 2px;width:22px;");
-        });
-        rootEl.querySelectorAll(".social table").forEach(t => {
-          const prev = t.getAttribute("style") || "";
-          t.setAttribute("style", prev + (prev.trim().endsWith(";") || prev.trim()==="" ? "" : ";") + "width:auto;border-collapse:collapse;margin:0 auto;");
+        root.querySelectorAll(".social img").forEach(img => {
+          img.style.width = "22px";
+          img.style.height = "22px";
+          img.style.display = "block";
         });
 
-        // 4) Text spacing
-        rootEl.querySelectorAll(".sig-text td").forEach(td => {
-          const prev = td.getAttribute("style") || "";
-          td.setAttribute("style", prev + (prev.trim().endsWith(";") || prev.trim()==="" ? "" : ";") + "padding:1px 0;line-height:1.3;");
+        root.querySelectorAll(".sig-text td").forEach(td => {
+          td.style.fontSize = td.style.fontSize || "12px";
+          td.style.lineHeight = "1.3";
+          td.style.padding = "1px 0";
         });
       }
 
-      async function copyHtmlToClipboard(html) {
+      async function copyHtml(html) {
         const plain = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-
-        if (navigator.clipboard && window.ClipboardItem) {
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              "text/html": new Blob([html], { type: "text/html" }),
-              "text/plain": new Blob([plain], { type: "text/plain" })
-            })
-          ]);
-          return true;
-        }
-
-        // Fallback texte
-        const ta = document.createElement("textarea");
-        ta.value = plain;
-        ta.style.position = "fixed";
-        ta.style.left = "-9999px";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-        return false;
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([plain], { type: "text/plain" })
+          })
+        ]);
       }
 
-      async function onCopySignatureClick(ev) {
+      async function onCopy(ev) {
         const btn = ev.currentTarget;
-        const slug = btn.getAttribute("data-slug");
+        const slug = btn.dataset.slug;
         const table = document.querySelector(`table[data-sig="${slug}"]`);
         if (!table) return;
 
-        const prev = btn.textContent;
         btn.disabled = true;
-        btn.textContent = "Copying...";
+        btn.textContent = "Copying…";
 
         try {
-          // Clone pour ne pas modifier l'affichage
           const clone = table.cloneNode(true);
-
-          // Rend les liens absolus (safe)
-          clone.querySelectorAll("[src]").forEach(el => {
-            const v = el.getAttribute("src");
-            if (!v || v.startsWith("data:") || v.startsWith("http://") || v.startsWith("https://")) return;
-            el.setAttribute("src", new URL(v, window.location.href).href);
-          });
-          clone.querySelectorAll("a[href]").forEach(el => {
-            const v = el.getAttribute("href");
-            if (!v || v.startsWith("#") || v.startsWith("mailto:") || v.startsWith("tel:") || v.startsWith("http://") || v.startsWith("https://")) return;
-            el.setAttribute("href", new URL(v, window.location.href).href);
-          });
-
-          // Fix rendu texte/taille via styles inline
-          inlineCriticalStyles(clone);
-
-          // Inline images (data URI)
-          await inlineImages(clone);
-
-          // Copie
-          await copyHtmlToClipboard(clone.outerHTML);
-
+          rewriteImages(clone);
+          inlineStyles(clone);
+          await copyHtml(clone.outerHTML);
           btn.textContent = "Copied ✓";
-          setTimeout(() => {
-            btn.textContent = prev;
-            btn.disabled = false;
-          }, 900);
         } catch (e) {
           console.error(e);
           btn.textContent = "Error";
-          setTimeout(() => {
-            btn.textContent = prev;
-            btn.disabled = false;
-          }, 1200);
         }
-      }
 
-      // ---------- RENDER ----------
+        setTimeout(() => {
+          btn.textContent = "Copy Signature";
+          btn.disabled = false;
+        }, 1000);
+      }
 
       fetch("https://opensheet.elk.sh/1maVoCpxQUmelT_wpZzTZERPzW4y20zGeoLtQuxbFvXQ/1")
         .then(r => r.json())
         .then(users =>
           users.filter(Boolean).map(({ firstname, lastname, title, mobile }) => {
-            const slug = slugify(`${firstname} ${lastname}`) || `user-${Math.random().toString(16).slice(2)}`;
+            const slug = slugify(`${firstname} ${lastname}`);
 
-            return [
-              `<div id="${slug}" style="display:flex;flex-direction:row;margin:10px 0;user-select:none;align-items:center">`,
-                '<div style="background:#eee;flex-grow:1;height:1px"></div>',
-                `<a style="text-decoration:none;color:grey;margin-left:8px" href="#${slug}">🔗</a>`,
-              '</div>',
-              `<div style="margin:6px 0 10px;user-select:none">`,
-                `<button class="copy-btn" data-slug="${slug}">Copy Signature</button>`,
-              `</div>`,
+            return `
+<div style="margin:12px 0">
+  <div style="display:flex;align-items:center">
+    <div style="flex-grow:1;height:1px;background:#eee"></div>
+    <a href="#${slug}" style="margin-left:8px;color:#999;text-decoration:none">🔗</a>
+  </div>
 
-              `<table data-sig="${slug}" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-family:sans-serif;">`,
-                '<tr>',
+  <div style="margin:6px 0">
+    <button class="copy-btn" data-slug="${slug}">Copy Signature</button>
+  </div>
 
-                  '<td style="width:100px;">',
-                    '<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;text-align:center;">',
+  <table data-sig="${slug}" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse">
+    <tr>
+      <td style="width:100px;text-align:center">
+        <table cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="logo01edu">
+              <img src="./images/logo01edu.svg" alt="01Edu">
+            </td>
+          </tr>
+          <tr><td height="6"></td></tr>
+          <tr>
+            <td class="social">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td><img src="./images/linkedin.svg"></td>
+                  <td><img src="./images/youtube.svg"></td>
+                  <td><img src="./images/instagram.svg"></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
 
-                      '<tr>',
-                        '<td class="logo01edu">',
-                          '<img src="./images/logo01edu.svg" alt="01Edu Logo" />',
-                        '</td>',
-                      '</tr>',
+      <td style="width:3px;background:#0063f9"></td>
+      <td style="width:3px"></td>
 
-                      '<tr>',
-                        '<td height="6" style="height:6px;line-height:6px;font-size:0;">&nbsp;</td>',
-                      '</tr>',
+      <td>
+        <table class="sig-text">
+          <tr><td style="font-size:12px">Recode Our World With</td></tr>
+          <tr><td style="font-weight:bold;color:#0063f9">${firstname} ${lastname}</td></tr>
+          <tr><td style="font-weight:bold;font-size:12px">${title}</td></tr>
+          ${mobile ? `<tr><td style="font-size:12px">Mobile: ${mobile}</td></tr>` : ""}
+          <tr><td style="font-size:12px"><a href="https://www.01edu.ai" style="color:#0063f9">www.01edu.ai</a></td></tr>
+        </table>
+      </td>
+    </tr>
 
-                      '<tr>',
-                        '<td class="social">',
-                          '<table cellpadding="0" cellspacing="0" border="0" style="width:auto;border-collapse:collapse;margin:0 auto;">',
-                            '<tr>',
-                              '<td style="text-align:right;">',
-                                '<a href="https://www.linkedin.com/company/01edu/">',
-                                  '<img src="./images/linkedin.svg" alt="LinkedIn" />',
-                                '</a>',
-                              '</td>',
-                              '<td style="text-align:center;">',
-                                '<a href="https://www.youtube.com/@01Edu_ai">',
-                                  '<img src="./images/youtube.svg" alt="youtube" />',
-                                '</a>',
-                              '</td>',
-                              '<td style="text-align:left;">',
-                                '<a href="https://www.instagram.com/01edu_ai/">',
-                                  '<img src="./images/instagram.svg" alt="Instagram" />',
-                                '</a>',
-                              '</td>',
-                            '</tr>',
-                          '</table>',
-                        '</td>',
-                      '</tr>',
-
-                    '</table>',
-                  '</td>',
-
-                  '<td style="width:3px;background:#0063f9;"></td>',
-                  '<td style="width:3px;"></td>',
-
-                  '<td>',
-                    '<table class="sig-text" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">',
-                      '<tr style="height:20px;"><td style="font-size:12px;">Recode Our World With</td></tr>',
-                      `<tr style="height:20px;"><td style="font-weight:bold;color:#0063f9;">${firstname} ${lastname}</td></tr>`,
-                      `<tr style="height:20px;"><td style="font-weight:bold;font-size:12px;">${title}</td></tr>`,
-                      mobile ? `<tr style="height:20px;"><td style="font-size:12px;">Mobile: ${mobile}</td></tr>` : '',
-                      '<tr style="height:20px;"><td style="font-size:12px;"><a style="color:#0063f9;" href="https://www.01edu.ai">www.01edu.ai</a></td></tr>',
-                    '</table>',
-                  '</td>',
-
-                '</tr>',
-
-                '<tr>',
-                  '<td colspan="4" style="padding-top:20px;color:#666;font-size:12px">',
-                    'Any electronic messages sent outside your regular working hours do not require a response until you return to your normal working hours.',
-                  '</td>',
-                '</tr>',
-
-              '</table>'
-            ].join('');
+    <tr>
+      <td colspan="4" style="padding-top:16px;font-size:12px;color:#666">
+        Any electronic messages sent outside your regular working hours do not require a response until you return to your normal working hours.
+      </td>
+    </tr>
+  </table>
+</div>`;
           })
         )
         .then(html => {
-          document.body.innerHTML += html.join('<br>\n');
-          document.querySelectorAll(".copy-btn").forEach(btn => btn.addEventListener("click", onCopySignatureClick));
-        })
-        .catch(err => {
-          document.body.innerHTML += `<pre style="color:#b00020;font-family:monospace">ERREUR: ${err.message}</pre>`;
-          console.error(err);
+          document.body.innerHTML += html.join("");
+          document.querySelectorAll(".copy-btn")
+            .forEach(btn => btn.addEventListener("click", onCopy));
         });
     </script>
   </body>
