@@ -1,0 +1,156 @@
+<!doctype html>
+<html>
+  <head>
+    <meta content="text/html; charset=UTF-8" http-equiv="content-type">
+
+    <style>
+      /* Police globale */
+      html, body, table, td, a, div {
+        font-family: Gotham, "Gotham", Arial, sans-serif;
+      }
+
+      /* Logo principal */
+      .logo01edu img:first-child {
+        width: 100px;
+        max-width: 100px;
+        height: auto;
+        display: block;     /* safe */
+        margin: 0 auto;     /* centre l'image */
+      }
+
+      .logo01edu {
+        padding-right: 6px;
+        text-align: center;
+      }
+
+      /* Logos sociaux */
+      .social img {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 22px;
+        object-fit: contain;
+        display: block;
+      }
+
+      .social table {
+        width: auto !important;
+        margin: 0 auto !important;
+        border-collapse: collapse;
+      }
+
+      .social td {
+        padding: 0 2px;
+        width: 22px;
+      }
+
+      .social a,
+      .social img {
+        display: block;
+      }
+
+      /* Espacement texte */
+      .sig-text tr { height: auto !important; }
+      .sig-text td { padding: 1px 0; line-height: 1.3; }
+    </style>
+  </head>
+
+  <body>
+    <script>
+      function slugify(str) {
+        return (str || "")
+          .toLowerCase()
+          .trim()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9-]/g, "");
+      }
+
+      fetch("https://opensheet.elk.sh/1maVoCpxQUmelT_wpZzTZERPzW4y20zGeoLtQuxbFvXQ/1")
+        .then(r => r.json())
+        .then(users =>
+          users.filter(Boolean).map(({ firstname, lastname, title, mobile }) => {
+            const slug = slugify(`${firstname} ${lastname}`) || `user-${Math.random().toString(16).slice(2)}`;
+
+            return [
+              `<div id="${slug}" style="display: flex; flex-direction: row; margin: 10px 0; user-select: none">`,
+                '<div style="background: #eee; flex-grow: 1"></div>',
+                `<a style="text-decoration: none; color: grey" href="#${slug}">🔗</a>`,
+              '</div>',
+
+              '<table cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; font-family: sans-serif;">',
+                '<tr>',
+
+                  '<td style="width: 100px;">',
+                    '<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; text-align: center;">',
+
+                      '<tr>',
+                        '<td class="logo01edu">',
+                          '<img src="./images/logo01edu.svg" alt="01Edu Logo" />',
+                        '</td>',
+                      '</tr>',
+
+                      /* ✅ LIGNE ESPACE SOUS LE LOGO (la plus fiable) */
+                      '<tr>',
+                        '<td height="6" style="height:6px; line-height:6px; font-size:0;">&nbsp;</td>',
+                      '</tr>',
+
+                      '<tr>',
+                        '<td class="social">',
+                          '<table cellpadding="0" cellspacing="0" border="0" style="width: auto; border-collapse: collapse; margin: 0 auto;">',
+                            '<tr>',
+                              '<td style="text-align: right;">',
+                                '<a href="https://www.linkedin.com/company/01edu/">',
+                                  '<img src="./images/linkedin.svg" alt="LinkedIn" />',
+                                '</a>',
+                              '</td>',
+                              '<td style="text-align: center;">',
+                                '<a href="https://www.youtube.com/@01Edu_ai">',
+                                  '<img src="./images/youtube.svg" alt="youtube" />',
+                                '</a>',
+                              '</td>',
+                              '<td style="text-align: left;">',
+                                '<a href="https://www.instagram.com/01edu_ai/">',
+                                  '<img src="./images/instagram.svg" alt="Instagram" />',
+                                '</a>',
+                              '</td>',
+                            '</tr>',
+                          '</table>',
+                        '</td>',
+                      '</tr>',
+
+                    '</table>',
+                  '</td>',
+
+                  '<td style="width: 3px; background: #0063f9;"></td>',
+                  '<td style="width: 3px;"></td>',
+
+                  '<td>',
+                    '<table class="sig-text" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">',
+                      '<tr style="height: 20px;"><td style="font-size: 12px;">Recode Our World With</td></tr>',
+                      `<tr style="height: 20px;"><td style="font-weight: bold; color: #0063f9;">${firstname} ${lastname}</td></tr>`,
+                      `<tr style="height: 20px;"><td style="font-weight: bold; font-size: 12px;">${title}</td></tr>`,
+                      mobile ? `<tr style="height: 20px;"><td style="font-size: 12px;">Mobile: ${mobile}</td></tr>` : '',
+                      '<tr style="height: 20px;"><td style="font-size: 12px;"><a style="color: #0063f9;" href="https://www.01edu.ai">www.01edu.ai</a></td></tr>',
+                    '</table>',
+                  '</td>',
+
+                '</tr>',
+
+                '<tr>',
+                  '<td colspan="4" style="padding-top: 20px; color: #666; font-size: 12px">',
+                    'Any electronic messages sent outside your regular working hours do not require a response until you return to your normal working hours.',
+                  '</td>',
+                '</tr>',
+
+              '</table>'
+            ].join('');
+          })
+        )
+        .then(html => document.body.innerHTML += html.join('<br>\n'))
+        .catch(err => {
+          document.body.innerHTML += `<pre style="color:#b00020;font-family:monospace">ERREUR: ${err.message}</pre>`;
+          console.error(err);
+        });
+    </script>
+  </body>
+</html>
