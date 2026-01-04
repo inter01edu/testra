@@ -1,66 +1,41 @@
 <script>
-  /************************************
-   * COPY SIGNATURE (HTML + images)
-   ************************************/
-  async function urlToDataURL(url) {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = reject;
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
+  // --- Simple copy HTML (signature only) ---
+  function makeAbsoluteUrls(html) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+
+    // Rend les src/href absolus
+    doc.querySelectorAll("[src]").forEach(el => {
+      const v = el.getAttribute("src");
+      if (!v || v.startsWith("data:") || v.startsWith("http://") || v.startsWith("https://")) return;
+      el.setAttribute("src", new URL(v, window.location.href).href);
     });
-  }
 
-  async function inlineImagesInHtml(html, baseUrl = "") {
-    // Remplace les <img src="..."> par <img src="data:...">
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
+    doc.querySelectorAll("a[href]").forEach(el => {
+      const v = el.getAttribute("href");
+      if (!v || v.startsWith("#") || v.startsWith("mailto:") || v.startsWith("tel:") || v.startsWith("http://") || v.startsWith("https://")) return;
+      el.setAttribute("href", new URL(v, window.location.href).href);
+    });
 
-    const imgs = Array.from(doc.querySelectorAll("img"));
-    for (const img of imgs) {
-      const src = img.getAttribute("src");
-      if (!src) continue;
-
-      // Déjà inline / déjà http(s) OK mais on peut inline quand même si même origine.
-      if (src.startsWith("data:")) continue;
-
-      // Construit une URL absolue
-      let abs;
-      try {
-        abs = new URL(src, baseUrl || window.location.href).toString();
-      } catch (e) {
-        continue;
-      }
-
-      try {
-        const dataUrl = await urlToDataURL(abs);
-        img.setAttribute("src", dataUrl);
-      } catch (e) {
-        // Si une image ne peut pas être fetch (CORS, etc.), on la laisse telle quelle
-        // console.warn("Cannot inline image:", abs, e);
-      }
-    }
-
-    // Retourne uniquement le body innerHTML du fragment
     return doc.body.innerHTML;
   }
 
-  async function copyHtmlToClipboard(html, plainText = "") {
-    // Essaie de copier du HTML riche (meilleur pour Gmail/Outlook)
+  async function copyHtml(html) {
+    const plain = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+
+    // Clipboard riche (HTML)
     if (navigator.clipboard && window.ClipboardItem) {
-      const data = {
-        "text/html": new Blob([html], { type: "text/html" }),
-        "text/plain": new Blob([plainText || ""], { type: "text/plain" }),
-      };
-      await navigator.clipboard.write([new ClipboardItem(data)]);
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([plain], { type: "text/plain" })
+        })
+      ]);
       return true;
     }
 
-    // Fallback: copie en texte via textarea
+    // Fallback texte
     const ta = document.createElement("textarea");
-    ta.value = plainText || html;
+    ta.value = plain;
     ta.style.position = "fixed";
     ta.style.left = "-9999px";
     document.body.appendChild(ta);
@@ -70,494 +45,63 @@
     return false;
   }
 
-  function extractPlainTextFromHtml(html) {
-    const div = document.createElement("div");
-    div.innerHTML = html;
-    return div.innerText || div.textContent || "";
-  }
+  function addCopyButtons() {
+    // On cherche tous les liens 🔗 (ancre contenant ce caractère)
+    const linkIcons = Array.from(document.querySelectorAll("a")).filter(a => a.textContent.trim() === "🔗");
 
-  function makeCopyButton(onClick) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "copy-signature-btn";
-    btn.textContent = "Copy signature";
-    btn.addEventListener("click", onClick);
-    return btn;
-  }
+    linkIcons.forEach(a => {
+      // Évite double ajout
+      if (a.closest(".signature-header")?.parentElement?.querySelector(".copy-signature-btn")) return;
 
-  /************************************
-   * RENDER SIGNATURES (existing content)
-   ************************************/
+      // On part du principe que la signature est dans le même "bloc" (container)
+      const container = a.closest(".signature-container") || a.parentElement?.parentElement;
+      if (!container) return;
 
-  const signatures = [
-    {
-      name: "01Edu",
-      link: "signatures/01Edu.html",
-    },
-    {
-      name: "01Talent",
-      link: "signatures/01Talent.html",
-    },
-    {
-      name: "01Founders",
-      link: "signatures/01Founders.html",
-    },
-    {
-      name: "01School",
-      link: "signatures/01School.html",
-    },
-  ];
+      // On prend le premier <table> de signature dans ce container (c'est généralement la signature)
+      const signatureTable = container.querySelector("table");
+      if (!signatureTable) return;
 
-  const people = [
-    {
-      firstName: "Raphaël",
-      lastName: "Alçufrom",
-      jobTitle: "Co-founder",
-      email: "raphael.alcufrom@01talent.com",
-      phone: "+33 7 64 40 51 68",
-      linkedin: "https://www.linkedin.com/in/raphael-alcufrom/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Mohammed",
-      lastName: "Alami",
-      jobTitle: "Co-founder",
-      email: "mohammed.alami@01talent.com",
-      phone: "+33 6 64 03 22 67",
-      linkedin: "https://www.linkedin.com/in/mohammedalami/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Amir",
-      lastName: "Krichen",
-      jobTitle: "CTO",
-      email: "amir.krichen@01talent.com",
-      phone: "+33 7 82 00 61 66",
-      linkedin: "https://www.linkedin.com/in/amir-krichen/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Amine",
-      lastName: "Belaïd",
-      jobTitle: "COO",
-      email: "amine.belaid@01talent.com",
-      phone: "+33 6 67 13 83 88",
-      linkedin: "https://www.linkedin.com/in/amine-belaid/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Sarah",
-      lastName: "Belaïd",
-      jobTitle: "Head of Talent",
-      email: "sarah.belaid@01talent.com",
-      phone: "+33 7 60 35 52 64",
-      linkedin: "https://www.linkedin.com/in/sarah-bela%C3%AFd/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Hatem",
-      lastName: "Zouaoui",
-      jobTitle: "CFO",
-      email: "hatem.zouaoui@01talent.com",
-      phone: "+33 7 66 67 05 80",
-      linkedin: "https://www.linkedin.com/in/hatem-zouaoui-12560631/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Wassila",
-      lastName: "Ben Amara",
-      jobTitle: "Chief of Staff",
-      email: "wassila.benamara@01talent.com",
-      phone: "+33 6 46 14 43 80",
-      linkedin: "https://www.linkedin.com/in/wassila-ben-amara/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Loïs",
-      lastName: "Briau",
-      jobTitle: "Head of People & Culture",
-      email: "lois.briau@01talent.com",
-      phone: "+33 6 83 72 23 70",
-      linkedin: "https://www.linkedin.com/in/lo%C3%AFs-briau-489a7a10a/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Clara",
-      lastName: "Bonnet",
-      jobTitle: "Office Manager",
-      email: "clara.bonnet@01talent.com",
-      phone: "+33 7 69 89 72 56",
-      linkedin: "https://www.linkedin.com/in/clara-bonnet-7a5a02151/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Eliott",
-      lastName: "Delaporte",
-      jobTitle: "Investment Associate",
-      email: "eliott.delaporte@01talent.com",
-      phone: "+33 6 30 77 43 51",
-      linkedin: "https://www.linkedin.com/in/eliott-delaporte/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Paul",
-      lastName: "Duhamel",
-      jobTitle: "Investment Analyst",
-      email: "paul.duhamel@01talent.com",
-      phone: "+33 6 28 31 02 77",
-      linkedin: "https://www.linkedin.com/in/paulduhamel/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Louis",
-      lastName: "Guillaume",
-      jobTitle: "Investment Analyst",
-      email: "louis.guillaume@01talent.com",
-      phone: "+33 6 03 99 65 52",
-      linkedin: "https://www.linkedin.com/in/louisguillaume/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Ilona",
-      lastName: "Hacine",
-      jobTitle: "Talent Manager",
-      email: "ilona.hacine@01talent.com",
-      phone: "+33 6 07 07 73 90",
-      linkedin: "https://www.linkedin.com/in/ilona-hacine-81a862159/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Amélie",
-      lastName: "Guenot",
-      jobTitle: "Talent Manager",
-      email: "amelie.guenot@01talent.com",
-      phone: "+33 6 07 41 05 22",
-      linkedin: "https://www.linkedin.com/in/am%C3%A9lie-guenot-1108721bb/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Salma",
-      lastName: "Ait el Cadi",
-      jobTitle: "Talent Manager",
-      email: "salma.aitelcadi@01talent.com",
-      phone: "+33 7 69 32 08 71",
-      linkedin: "https://www.linkedin.com/in/salma-ait-el-cadi/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Lauriane",
-      lastName: "Redon",
-      jobTitle: "Talent Manager",
-      email: "lauriane.redon@01talent.com",
-      phone: "+33 7 81 55 89 93",
-      linkedin: "https://www.linkedin.com/in/lauriane-redon/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Johanna",
-      lastName: "Husseini",
-      jobTitle: "Talent Manager",
-      email: "johanna.husseini@01talent.com",
-      phone: "+33 7 88 02 04 19",
-      linkedin: "https://www.linkedin.com/in/johanna-husseini/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Violette",
-      lastName: "Moulin",
-      jobTitle: "Talent Manager",
-      email: "violette.moulin@01talent.com",
-      phone: "+33 6 07 55 92 76",
-      linkedin: "https://www.linkedin.com/in/violette-moulin/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Ugo",
-      lastName: "Gautier",
-      jobTitle: "Talent Manager",
-      email: "ugo.gautier@01talent.com",
-      phone: "+33 6 46 23 92 91",
-      linkedin: "https://www.linkedin.com/in/ugo-gautier/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Juliette",
-      lastName: "Bon",
-      jobTitle: "Talent Manager",
-      email: "juliette.bon@01talent.com",
-      phone: "+33 6 32 35 08 94",
-      linkedin: "https://www.linkedin.com/in/juliette-bon-9277b2146/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Léa",
-      lastName: "Bourbaki",
-      jobTitle: "Talent Manager",
-      email: "lea.bourbaki@01talent.com",
-      phone: "+33 6 32 02 01 16",
-      linkedin: "https://www.linkedin.com/in/l%C3%A9a-bourbaki-3a5a35180/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Marie",
-      lastName: "Delsarte",
-      jobTitle: "Talent Manager",
-      email: "marie.delsarte@01talent.com",
-      phone: "+33 6 75 58 85 52",
-      linkedin: "https://www.linkedin.com/in/marie-delsarte-7a83b1184/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Gaëtan",
-      lastName: "Joyeux",
-      jobTitle: "Talent Manager",
-      email: "gaetan.joyeux@01talent.com",
-      phone: "+33 7 69 40 06 58",
-      linkedin: "https://www.linkedin.com/in/ga%C3%ABtan-joyeux-3a368b1a3/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Sacha",
-      lastName: "Belaïd",
-      jobTitle: "Talent Manager",
-      email: "sacha.belaid@01talent.com",
-      phone: "+33 6 47 05 12 31",
-      linkedin: "https://www.linkedin.com/in/sacha-bela%C3%AFd/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Aymen",
-      lastName: "Gharbi",
-      jobTitle: "HR Talent",
-      email: "aymen.gharbi@01talent.com",
-      phone: "+33 7 66 36 72 67",
-      linkedin: "https://www.linkedin.com/in/aymen-gharbi-7b3048221/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Abir",
-      lastName: "Goune",
-      jobTitle: "Head of Operations",
-      email: "abir.goune@01talent.com",
-      phone: "+33 6 23 07 44 04",
-      linkedin: "https://www.linkedin.com/in/abir-goune/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Emma",
-      lastName: "Verzenay",
-      jobTitle: "Talent Associate",
-      email: "emma.verzenay@01talent.com",
-      phone: "+33 6 09 25 86 01",
-      linkedin: "https://www.linkedin.com/in/emma-verzenay/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Alexandre",
-      lastName: "Dujardin",
-      jobTitle: "Lead Developer",
-      email: "alexandre.dujardin@01talent.com",
-      phone: "+33 6 44 18 65 59",
-      linkedin: "https://www.linkedin.com/in/alexandre-dujardin/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Khalil",
-      lastName: "Mbarek",
-      jobTitle: "Developer",
-      email: "khalil.mbarek@01talent.com",
-      phone: "+33 7 68 44 42 38",
-      linkedin: "https://www.linkedin.com/in/khalil-mbarek/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Ali",
-      lastName: "Romdhane",
-      jobTitle: "Developer",
-      email: "ali.romdhane@01talent.com",
-      phone: "+33 7 69 40 54 57",
-      linkedin: "https://www.linkedin.com/in/ali-romdhane/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-    {
-      firstName: "Bilel",
-      lastName: "Bousnina",
-      jobTitle: "Developer",
-      email: "bilel.bousnina@01talent.com",
-      phone: "+33 7 69 40 54 22",
-      linkedin: "https://www.linkedin.com/in/bilel-bousnina/",
-      logo: "./images/01talent.png",
-      website: "https://01talent.com",
-      address: "20 rue du 4 septembre, 75002 Paris",
-    },
-  ];
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "copy-signature-btn";
+      btn.textContent = "Copy signature";
 
-  const list = document.querySelector("#list");
+      // On place le bouton "sous le 🔗" : sous le header si possible
+      let actions = container.querySelector(".signature-actions");
+      if (!actions) {
+        actions = document.createElement("div");
+        actions.className = "signature-actions";
+        const header = container.querySelector(".signature-header") || a.parentElement;
+        header.insertAdjacentElement("afterend", actions);
+      }
 
-  function htmlEscape(s) {
-    return String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
+      actions.appendChild(btn);
 
-  async function buildSignatureHtml(person) {
-    // On récupère le template HTML de signature depuis son fichier (signatures/*.html)
-    // puis on remplace des placeholders simples si besoin.
-    // Ici on part du principe que les signatures existantes sont déjà bien formées.
-    const res = await fetch(signatures[1].link); // 01Talent par défaut (comme ton fichier)
-    let tpl = await res.text();
-
-    // Remplacements basiques (si ton template utilise ces tokens)
-    tpl = tpl
-      .replaceAll("{{firstName}}", htmlEscape(person.firstName))
-      .replaceAll("{{lastName}}", htmlEscape(person.lastName))
-      .replaceAll("{{jobTitle}}", htmlEscape(person.jobTitle))
-      .replaceAll("{{email}}", htmlEscape(person.email))
-      .replaceAll("{{phone}}", htmlEscape(person.phone || ""))
-      .replaceAll("{{linkedin}}", htmlEscape(person.linkedin || ""))
-      .replaceAll("{{website}}", htmlEscape(person.website || ""))
-      .replaceAll("{{address}}", htmlEscape(person.address || ""))
-      .replaceAll("{{logo}}", htmlEscape(person.logo || ""));
-
-    return tpl;
-  }
-
-  async function render() {
-    list.innerHTML = "";
-
-    for (const p of people) {
-      // Container
-      const wrapper = document.createElement("div");
-      wrapper.className = "signature-container";
-
-      // Ligne de titre (nom + lien)
-      const header = document.createElement("div");
-      header.className = "signature-header";
-
-      const title = document.createElement("div");
-      title.className = "signature-title";
-      title.textContent = `${p.firstName} ${p.lastName}`;
-
-      const link = document.createElement("a");
-      link.href = `mailto:${p.email}`;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.className = "signature-link";
-      link.textContent = "🔗";
-
-      header.appendChild(title);
-      header.appendChild(link);
-
-      // La signature HTML
-      const signatureHtml = await buildSignatureHtml(p);
-
-      const signatureBox = document.createElement("div");
-      signatureBox.className = "signature-box";
-      signatureBox.innerHTML = signatureHtml;
-
-      // Bouton Copy signature (sous le 🔗)
-      const actions = document.createElement("div");
-      actions.className = "signature-actions";
-
-      const copyBtn = makeCopyButton(async () => {
+      btn.addEventListener("click", async () => {
         try {
-          copyBtn.disabled = true;
-          const originalLabel = copyBtn.textContent;
-          copyBtn.textContent = "Copying...";
+          btn.disabled = true;
+          const prev = btn.textContent;
+          btn.textContent = "Copying...";
 
-          const inlined = await inlineImagesInHtml(signatureHtml, window.location.href);
-          const plain = extractPlainTextFromHtml(inlined);
+          // Copie uniquement la signature (table)
+          const html = makeAbsoluteUrls(signatureTable.outerHTML);
+          await copyHtml(html);
 
-          const richOk = await copyHtmlToClipboard(inlined, plain);
-
-          copyBtn.textContent = richOk ? "Copied ✓" : "Copied (text) ✓";
+          btn.textContent = "Copied ✓";
           setTimeout(() => {
-            copyBtn.textContent = originalLabel;
-            copyBtn.disabled = false;
-          }, 1200);
+            btn.textContent = prev;
+            btn.disabled = false;
+          }, 900);
         } catch (e) {
-          // console.error(e);
-          copyBtn.textContent = "Error";
-          setTimeout(() => {
-            copyBtn.textContent = "Copy signature";
-            copyBtn.disabled = false;
-          }, 1500);
+          btn.textContent = "Error";
+          btn.disabled = false;
         }
       });
-
-      actions.appendChild(copyBtn);
-
-      // Assemble
-      wrapper.appendChild(header);
-      wrapper.appendChild(actions);
-      wrapper.appendChild(signatureBox);
-
-      list.appendChild(wrapper);
-    }
+    });
   }
 
-  render();
+  // Lance après que la liste soit rendue (au besoin, re-scan après un petit délai)
+  addCopyButtons();
+  setTimeout(addCopyButtons, 300);
 </script>
+
